@@ -123,6 +123,8 @@ class KBJ_MailChimpPostToCampaign
             $this->submenu_page_save( $_POST['options'] );
         }
 
+        $options['example'] = get_option( 'kbj_mcptc_example' );
+
         include 'views/submenu_page.html.php';
     }
 
@@ -131,7 +133,7 @@ class KBJ_MailChimpPostToCampaign
         foreach( $options as $option => $value ){
 
             update_option(
-                $option,
+                'kbj_mcptc_' . $option,
                 sanitize_text_field( $value )
             );
         }
