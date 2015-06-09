@@ -25,11 +25,18 @@ class KBJ_MailChimpPostToCampaign
 
     public function __construct()
     {
-        add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
-        add_action( 'save_post', array( $this, 'save' ), 10, 3 );
-
         add_action( 'admin_menu', array( $this, 'submenu_page' ) );
+
+        add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
+        add_action( 'save_post', array( $this, 'meta_box_save' ), 10, 3 );
+
+        add_action( 'save_post', array( $this, 'create_campaign' ), 9001, 3 );
     }
+
+
+    /*
+     * META BOX
+     */
 
     public function add_meta_box()
     {
@@ -56,7 +63,7 @@ class KBJ_MailChimpPostToCampaign
         include 'views/post_meta_box.html.php';
     }
 
-    function save( $post_id, $post, $update )
+    function meta_box_save( $post_id, $post, $update )
     {
         if( ! $this->verify_nonce( $post_id ) )
             return $post_id;
@@ -75,35 +82,6 @@ class KBJ_MailChimpPostToCampaign
 
         // Update the meta field.
         update_post_meta( $post_id, '_my_meta_value_key', $mydata );
-
-
-
-
-
-        // If this is just a revision, don't send the email.
-        if ( $update && $this->settings['create_campaign'] )
-            return $post_id;
-    }
-
-    public function submenu_page()
-    {
-        add_submenu_page(
-            'options-general.php',
-            'MailChimp Post to Campaign',
-            'Post to Campaign',
-            'manage_options',
-            'mailchimp-post-to-campaign',
-            array( $this, 'submenu_page_callback' )
-        );
-    }
-
-    public function submenu_page_callback()
-    {
-        if( isset( $_POST['settings'] ) ){
-            $this->submenu_page_save( $_POST['settings'] );
-        }
-
-        include 'views/submenu_page.html.php';
     }
 
     private function verify_nonce( $post_id )
@@ -122,19 +100,58 @@ class KBJ_MailChimpPostToCampaign
         return wp_verify_nonce( $nonce, 'myplugin_inner_custom_box' );
     }
 
-    private function submenu_page_save( $settings )
-    {
-        foreach( $settings as $setting => $value ){
-            // Sanitize the user input.
-            $value = sanitize_text_field( $value );
 
-            // Update the meta field.
-            update_option( $setting, $value );
+    /*
+     * SUBMENU PAGE
+     */
+
+    public function submenu_page()
+    {
+        add_submenu_page(
+            'options-general.php',
+            'MailChimp Post to Campaign',
+            'Post to Campaign',
+            'manage_options',
+            'mailchimp-post-to-campaign',
+            array( $this, 'submenu_page_callback' )
+        );
+    }
+
+    public function submenu_page_callback()
+    {
+        if( isset( $_POST['options'] ) ){
+            $this->submenu_page_save( $_POST['options'] );
+        }
+
+        include 'views/submenu_page.html.php';
+    }
+
+    private function submenu_page_save( $options )
+    {
+        foreach( $options as $option => $value ){
+
+            update_option(
+                $option,
+                sanitize_text_field( $value )
+            );
         }
     }
 
-    private function create_campaign( $post )
+
+    /*
+     * MAILCHIMP
+     */
+
+    public function create_campaign( $post_id, $post, $update )
     {
+        // If this is an unsaved post, don't create the campaign.
+        if ( ! $update )
+            return $post_id;
+
+        // If this is just a revision, don't create the campaign.
+        if ( ! $this->settings['create_campaign'] )
+            return $post_id;
+
         $opts = array(
             'ssl_verifypeer' => false,
         );
