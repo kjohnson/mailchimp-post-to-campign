@@ -27,6 +27,8 @@ class KBJ_MailChimpPostToCampaign
     {
         add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
         add_action( 'save_post', array( $this, 'save' ), 10, 3 );
+
+        add_action( 'admin_menu', array( $this, 'submenu_page' ) );
     }
 
     public function add_meta_box()
@@ -83,6 +85,27 @@ class KBJ_MailChimpPostToCampaign
             return $post_id;
     }
 
+    public function submenu_page()
+    {
+        add_submenu_page(
+            'options-general.php',
+            'MailChimp Post to Campaign',
+            'Post to Campaign',
+            'manage_options',
+            'mailchimp-post-to-campaign',
+            array( $this, 'submenu_page_callback' )
+        );
+    }
+
+    public function submenu_page_callback()
+    {
+        if( isset( $_POST['settings'] ) ){
+            $this->submenu_page_save( $_POST['settings'] );
+        }
+
+        include 'views/submenu_page.html.php';
+    }
+
     private function verify_nonce( $post_id )
     {
         /*
@@ -97,6 +120,17 @@ class KBJ_MailChimpPostToCampaign
         $nonce = $_POST['myplugin_inner_custom_box_nonce'];
 
         return wp_verify_nonce( $nonce, 'myplugin_inner_custom_box' );
+    }
+
+    private function submenu_page_save( $settings )
+    {
+        foreach( $settings as $setting => $value ){
+            // Sanitize the user input.
+            $value = sanitize_text_field( $value );
+
+            // Update the meta field.
+            update_option( $setting, $value );
+        }
     }
 
     private function create_campaign( $post )
